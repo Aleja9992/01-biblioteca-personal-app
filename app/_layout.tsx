@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { getSession, isDemoSession } from "../src/session/session";
-import { apiFetch } from "../src/api/client";
+import { ApiClientError, apiFetch } from "../src/api/client";
 
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
+  const isLoginRoute = segments[0] === "login";
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -17,7 +18,7 @@ export default function RootLayout() {
         if (await isDemoSession()) {
           if (active) {
             setReady(true);
-            if (segments[0] === "login") router.replace("/(tabs)");
+            if (isLoginRoute) router.replace("/(tabs)");
           }
           return;
         }
@@ -26,7 +27,7 @@ export default function RootLayout() {
         if (!session) {
           if (active) {
             setReady(true);
-            if (segments[0] !== "login") router.replace("/login");
+            if (!isLoginRoute) router.replace("/login");
           }
           return;
         }
@@ -34,12 +35,16 @@ export default function RootLayout() {
         await apiFetch("/api/auth/yo", {}, true);
         if (active) {
           setReady(true);
-          if (segments[0] === "login") router.replace("/(tabs)");
+          if (isLoginRoute) router.replace("/(tabs)");
         }
-      } catch {
+      } catch (error) {
         if (active) {
           setReady(true);
-          if (segments[0] !== "login") router.replace("/login");
+          if (error instanceof ApiClientError && error.status === 401) {
+            if (!isLoginRoute) router.replace("/login");
+          } else if (isLoginRoute) {
+            router.replace("/(tabs)");
+          }
         }
       }
     }
@@ -48,7 +53,7 @@ export default function RootLayout() {
     return () => {
       active = false;
     };
-  }, [router, segments]);
+  }, [isLoginRoute, router]);
 
   if (!ready) return null;
 

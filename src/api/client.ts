@@ -77,44 +77,49 @@ export async function apiFetch(
 
   const session = await getSession();
 
-  try {
-    const first = await request(path, init, session?.token);
-    if (first.status !== 401 || !allowRefresh || !session?.refreshToken) {
-      return responseOrThrow(first);
-    }
-  } catch (error) {
-    if (error instanceof ApiClientError) {
-      if (error.status !== 401) throw error;
-    } else {
+  const first = await request(path, init, session?.token);
+  if (first.status !== 401 || !allowRefresh || !session?.refreshToken) {
+    return responseOrThrow(first);
+  }
+
+  const refreshResponse = await request(
+    "/api/auth/refresh",
+    {
+      method: "POST",
+      body: JSON.stringify({ refreshToken: session.refreshToken }),
+    },
+    undefined,
+  );
+
+  if (!refreshResponse.ok) {
+    try {
+      await responseOrThrow(refreshResponse);
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 401) {
+        await clearSession();
+        throw new ApiClientError(401, {
+          error: "Sesión caducada. Inicia sesión nuevamente",
+        });
+      }
       throw error;
     }
   }
 
-  try {
-    const refreshResponse = await request(
-      "/api/auth/refresh",
-      {
-        method: "POST",
-        body: JSON.stringify({ refreshToken: session?.refreshToken }),
-      },
-      undefined,
-    );
-    const refreshed = (await responseOrThrow(refreshResponse)) as Response;
-    const body = (await refreshed.json()) as {
-      token: string;
-      refreshToken: string;
-    };
-    await saveSession({
-      token: body.token,
-      refreshToken: body.refreshToken,
-    });
+  const body = (await refreshResponse.json()) as {
+    token: string;
+    refreshToken: string;
+  };
+  await saveSession({
+    token: body.token,
+    refreshToken: body.refreshToken,
+  });
 
-    const retried = await request(path, init, body.token);
-    return responseOrThrow(retried);
-  } catch {
+  const retried = await request(path, init, body.token);
+  if (retried.status === 401) {
     await clearSession();
     throw new ApiClientError(401, {
       error: "Sesión caducada. Inicia sesión nuevamente",
     });
   }
+  return responseOrThrow(retried);
 }
