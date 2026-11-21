@@ -30,7 +30,7 @@ Esta variable no contiene secretos.
 URL actual de la API desplegada:
 
 ```text
-https://01-biblioteca-personal-api.vercel.app
+https://biblioteca-personal-api.vercel.app
 ```
 
 ## Usuario de prueba local
