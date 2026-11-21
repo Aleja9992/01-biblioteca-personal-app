@@ -26,6 +26,20 @@ URL actual de la API desplegada:
 https://01-biblioteca-personal-api.vercel.app
 ```
 
+## Usuario de prueba local
+
+En builds de desarrollo (`__DEV__`), se puede entrar sin conectar con la API
+usando estas credenciales en la pantalla de inicio de sesión:
+
+```text
+Correo: demo@biblioteca.local
+Contraseña: biblioteca123
+```
+
+Esta sesión es solo local: los libros se guardan en SQLite y las solicitudes a
+la API se bloquean mientras se usa la cuenta demo. No crea una cuenta en el
+servidor y no está disponible en builds de producción.
+
 ## Despliegue móvil
 
 Este repositorio es Expo/React Native (no Vite). La app no inicializa el SDK web

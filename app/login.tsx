@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { apiFetch, ApiClientError } from "../src/api/client";
-import { saveSession } from "../src/session/session";
+import { saveDemoSession, saveSession } from "../src/session/session";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -13,6 +13,21 @@ export default function LoginScreen() {
 
   async function submit() {
     setError(null);
+    if (
+      __DEV__ &&
+      mode === "login" &&
+      email.trim().toLowerCase() === "demo@biblioteca.local" &&
+      password === "biblioteca123"
+    ) {
+      try {
+        await saveDemoSession();
+        router.replace("/(tabs)");
+      } catch {
+        setError("No se pudo iniciar la sesión de prueba");
+      }
+      return;
+    }
+
     if (!email.includes("@")) {
       setError("Introduce un correo válido");
       return;
@@ -68,6 +83,11 @@ export default function LoginScreen() {
         secureTextEntry
         style={styles.input}
       />
+      {__DEV__ && mode === "login" ? (
+        <Text style={styles.demoHint}>
+          Usuario de prueba: demo@biblioteca.local · Contraseña: biblioteca123
+        </Text>
+      ) : null}
       {error ? (
         <Text accessibilityRole="alert" style={styles.error}>
           {error}
@@ -103,5 +123,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, textAlign: "center" },
   input: { borderWidth: 1, borderRadius: 8, padding: 12 },
   error: { color: "#b91c1c" },
+  demoHint: { color: "#4b5563", textAlign: "center" },
   button: { borderWidth: 1, borderRadius: 8, padding: 12, alignItems: "center" },
 });

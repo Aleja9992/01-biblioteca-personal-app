@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { getSession } from "../src/session/session";
+import { getSession, isDemoSession } from "../src/session/session";
 import { apiFetch } from "../src/api/client";
 
 export default function RootLayout() {
@@ -14,6 +14,14 @@ export default function RootLayout() {
 
     async function checkSession() {
       try {
+        if (await isDemoSession()) {
+          if (active) {
+            setReady(true);
+            if (segments[0] === "login") router.replace("/(tabs)");
+          }
+          return;
+        }
+
         const session = await getSession();
         if (!session) {
           if (active) {

@@ -1,4 +1,9 @@
-import { clearSession, getSession, saveSession } from "../session/session";
+import {
+  clearSession,
+  getSession,
+  isDemoSession,
+  saveSession,
+} from "../session/session";
 
 export type ApiErrorShape = {
   error: string;
@@ -19,6 +24,16 @@ function apiUrl(): string {
   const baseUrl = process.env.EXPO_PUBLIC_API_URL;
   if (!baseUrl) {
     throw new Error("EXPO_PUBLIC_API_URL no está configurada");
+  }
+
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    throw new Error("EXPO_PUBLIC_API_URL debe ser una URL válida");
+  }
+  if (url.protocol !== "https:") {
+    throw new Error("EXPO_PUBLIC_API_URL debe usar HTTPS");
   }
   return baseUrl.replace(/\/+$/, "");
 }
@@ -56,6 +71,10 @@ export async function apiFetch(
   init: RequestInit = {},
   allowRefresh = true,
 ): Promise<Response> {
+  if (await isDemoSession()) {
+    throw new Error("La sesión demo solo permite operaciones locales");
+  }
+
   const session = await getSession();
 
   try {
