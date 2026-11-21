@@ -14,8 +14,17 @@ export type UpdateLibro = NewLibro & {
 };
 
 export function createRemoteId(): string {
-  const random = Math.random().toString(36).slice(2);
-  return `${Date.now().toString(36)}-${random}`;
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === "x" ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 
 export async function findBookById(id: number): Promise<LibroRecord | null> {
@@ -232,9 +241,26 @@ export async function restoreBookLocal(id: number): Promise<boolean> {
 
 export async function getPendingBooksLocal(): Promise<LibroRecord[]> {
   const database = await getDatabase();
-  return database.getAllAsync<LibroRecord>(
+  const books = await database.getAllAsync<LibroRecord>(
     "SELECT * FROM libro WHERE pending = 1 ORDER BY id ASC;",
   );
+  const pending: LibroRecord[] = [];
+
+  for (const book of books) {
+    if (book.remote_id && isUuid(book.remote_id)) {
+      pending.push(book);
+      continue;
+    }
+
+    const remoteId = createRemoteId();
+    await database.runAsync(
+      "UPDATE libro SET remote_id = ?, pending = 1 WHERE id = ?;",
+      [remoteId, book.id],
+    );
+    pending.push({ ...book, remote_id: remoteId, pending: 1 });
+  }
+
+  return pending;
 }
 
 export async function findBookByRemoteId(
