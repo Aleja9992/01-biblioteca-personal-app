@@ -13,7 +13,7 @@
     "production": {
       "distribution": "store",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://01-biblioteca-personal-api.vercel.app"
+        "EXPO_PUBLIC_API_URL": "https://biblioteca-personal-api.vercel.app"
       }
     }
   }
