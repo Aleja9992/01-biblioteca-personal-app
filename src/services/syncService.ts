@@ -1,5 +1,5 @@
 import NetInfo from "@react-native-community/netinfo";
-import { apiFetch } from "../api/client";
+import { ApiClientError, apiFetch } from "../api/client";
 import {
   applyRemoteBook,
   getMeta,
@@ -16,7 +16,34 @@ export type SyncResult = {
   recibidos: number;
 };
 
-export async function synchronizeBooks(): Promise<SyncResult> {
+let synchronization: Promise<SyncResult> | null = null;
+let rerunRequested = false;
+
+export function synchronizeBooks(): Promise<SyncResult> {
+  if (synchronization) {
+    rerunRequested = true;
+    return synchronization;
+  }
+
+  const current = (async () => {
+    let result: SyncResult;
+    do {
+      rerunRequested = false;
+      result = await synchronizeBooksOnce();
+    } while (rerunRequested);
+    return result;
+  })();
+  const wrapped = current.finally(() => {
+    if (synchronization === wrapped) {
+      synchronization = null;
+      rerunRequested = false;
+    }
+  });
+  synchronization = wrapped;
+  return wrapped;
+}
+
+async function synchronizeBooksOnce(): Promise<SyncResult> {
   const connection = await NetInfo.fetch();
   if (!connection.isConnected) {
     return { enviados: 0, recibidos: 0 };
@@ -26,10 +53,18 @@ export async function synchronizeBooks(): Promise<SyncResult> {
   const pending = await getPendingBooksLocal();
 
   for (const book of pending) {
-    if (!book.remote_id) continue;
+    if (!book.remote_id) {
+      throw new Error(`El libro local ${book.id} no tiene un ID remoto`);
+    }
 
     if (book.deleted === 1) {
-      await apiFetch(`/api/libros/${book.remote_id}`, { method: "DELETE" });
+      try {
+        await apiFetch(`/api/libros/${book.remote_id}`, { method: "DELETE" });
+      } catch (error) {
+        if (!(error instanceof ApiClientError && error.status === 404)) {
+          throw error;
+        }
+      }
       await markBookSyncedLocal(book.id);
       enviados += 1;
       continue;
@@ -42,7 +77,7 @@ export async function synchronizeBooks(): Promise<SyncResult> {
         portadaUrl = uploaded.url;
         await updateCoverLocal(book.id, portadaUrl);
       } else {
-        portadaUrl = null;
+        throw new Error(uploaded.message);
       }
     }
 

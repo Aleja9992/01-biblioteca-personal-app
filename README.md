@@ -17,6 +17,13 @@ Copy-Item .env.example .env.local
 npx expo start
 ```
 
+Los libros se guardan primero en SQLite para que la app siga funcionando sin
+conexión. La sincronización con la API se ejecuta al abrir las pestañas de libros
+o préstamos, al recuperar la conectividad y al volver a primer plano mientras
+una de esas pestañas está activa. Si una operación remota falla, el cambio
+permanece pendiente localmente y la pantalla permite reintentar. Las portadas
+locales se reducen y suben durante la sincronización.
+
 Configure `EXPO_PUBLIC_API_URL` con la URL pública HTTPS de la API.
 Esta variable no contiene secretos.
 

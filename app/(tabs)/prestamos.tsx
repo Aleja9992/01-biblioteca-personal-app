@@ -3,10 +3,17 @@ import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import type { LibroRecord } from "../../src/db/database";
 import { listarPrestados } from "../../src/services/bookService";
+import { useBookSynchronization } from "../../src/services/useBookSynchronization";
 
 export default function LoansScreen() {
   const router = useRouter();
   const [books, setBooks] = useState<LibroRecord[]>([]);
+  const {
+    syncing,
+    error: syncError,
+    revision: syncRevision,
+    retry: retrySync,
+  } = useBookSynchronization();
 
   useEffect(() => {
     let active = true;
@@ -16,10 +23,25 @@ export default function LoansScreen() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [syncRevision]);
 
   return (
     <View>
+      {syncing ? (
+        <Text accessibilityRole="text">Sincronizando con la API...</Text>
+      ) : null}
+      {syncError ? (
+        <View>
+          <Text accessibilityRole="alert">{syncError}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Reintentar sincronización"
+            onPress={retrySync}
+          >
+            <Text>Reintentar</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {books.length === 0 ? (
         <Text>No hay libros prestados</Text>
       ) : (

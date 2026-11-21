@@ -16,6 +16,7 @@ import {
 } from "../../src/services/bookService";
 import { pickRandomPendingBook } from "../../src/sensors/shake";
 import { useShake } from "../../src/sensors/useShake";
+import { useBookSynchronization } from "../../src/services/useBookSynchronization";
 
 type EstadoFilter = "todos" | "pendiente" | "leyendo" | "leido";
 
@@ -101,6 +102,12 @@ export default function BooksScreen() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [undoId, setUndoId] = useState<number | null>(null);
   const [suggestion, setSuggestion] = useState<string | null>(null);
+  const {
+    syncing,
+    error: syncError,
+    revision: syncRevision,
+    retry: retrySync,
+  } = useBookSynchronization();
 
   useEffect(() => {
     let active = true;
@@ -116,6 +123,10 @@ export default function BooksScreen() {
       active = false;
     };
   }, [search, estado]);
+
+  useEffect(() => {
+    if (syncRevision > 0) void refresh();
+  }, [syncRevision]);
 
   const filters: { label: string; value: EstadoFilter }[] = [
     { label: "Todos", value: "todos" },
@@ -149,11 +160,13 @@ export default function BooksScreen() {
     setUndoId(id);
     setTimeout(() => setUndoId((current) => (current === id ? null : current)), 5000);
     await refresh();
+    retrySync();
   }
 
   async function markRead(id: number) {
     await marcarLeido(id);
     await refresh();
+    retrySync();
   }
 
   async function undoDelete() {
@@ -161,10 +174,26 @@ export default function BooksScreen() {
     await deshacerEliminacion(undoId);
     setUndoId(null);
     await refresh();
+    retrySync();
   }
 
   return (
     <View style={styles.container}>
+      {syncing ? (
+        <Text accessibilityRole="text">Sincronizando con la API...</Text>
+      ) : null}
+      {syncError ? (
+        <View>
+          <Text accessibilityRole="alert">{syncError}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Reintentar sincronización"
+            onPress={retrySync}
+          >
+            <Text>Reintentar</Text>
+          </Pressable>
+        </View>
+      ) : null}
       <View style={styles.counters}>
         <Text>Total: {counters.total}</Text>
         <Text>Leídos: {counters.leidos}</Text>

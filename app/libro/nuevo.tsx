@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { crearLibro } from "../../src/services/bookService";
 import { pickCover } from "../../src/sensors/imagePicker";
-import { reduceAndUploadCover } from "../../src/sensors/coverUpload";
 
 export default function NewBookScreen() {
   const router = useRouter();
@@ -42,17 +41,12 @@ export default function NewBookScreen() {
     }
 
     try {
-      let portadaUrl = portadaUri;
-      if (portadaUri) {
-        const uploaded = await reduceAndUploadCover(portadaUri);
-        if (uploaded.ok) portadaUrl = uploaded.url;
-      }
       await crearLibro({
         titulo,
         autor,
         isbn: isbn.trim() === "" ? null : isbn.trim(),
         estado: "pendiente",
-        portada_uri: portadaUrl,
+        portada_uri: portadaUri,
       });
       router.replace("/(tabs)");
     } catch (caught) {
